@@ -159,38 +159,34 @@ def verificar_google():
             except Exception as e:
                 print(f"  Google billing erro {cid}: {e}")
 
-            # 2. Verifica orçamento da conta
+            # 2. Gasto zero ontem = possível verba esgotada
             try:
+                yesterday = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
                 resp = requests.post(
                     f"https://googleads.googleapis.com/v23/customers/{cid}/googleAds:search",
                     headers=headers,
                     json={"query": (
-                        "SELECT account_budget.status, "
-                        "account_budget.amount_served_micros, "
-                        "account_budget.approved_spending_limit_micros "
-                        "FROM account_budget "
-                        "WHERE account_budget.status = 'APPROVED'"
+                        f"SELECT metrics.cost_micros FROM campaign "
+                        f"WHERE segments.date = '{yesterday}' "
+                        f"AND campaign.status = 'ENABLED'"
                     )},
                     timeout=30,
                 )
                 if resp.ok:
-                    for row in resp.json().get("results", []):
-                        budget = row.get("accountBudget", {})
-                        served  = float(budget.get("amountServedMicros", 0)) / 1_000_000
-                        limit_s = budget.get("approvedSpendingLimitMicros", "0")
-                        # UNLIMITED = string vazia ou None
-                        if not limit_s or limit_s in ("", "UNSPECIFIED", "UNKNOWN"):
-                            continue
-                        limit = float(limit_s) / 1_000_000
-                        # Alerta apenas se consumiu >= 95% do limite aprovado
-                        if limit > 0 and served >= limit * 0.95:
+                    results = resp.json().get("results", [])
+                    if results:  # tem campanhas ativas
+                        total = sum(
+                            float(r.get("metrics", {}).get("costMicros", 0))
+                            for r in results
+                        )
+                        if total == 0:
                             alertas.append((
                                 cliente, "Google Ads",
-                                f"orçamento quase esgotado ({served:,.0f}/{limit:,.0f})",
+                                "sem gasto ontem — possível verba esgotada",
                                 cid
                             ))
             except Exception as e:
-                print(f"  Google budget erro {cid}: {e}")
+                print(f"  Google gasto erro {cid}: {e}")
 
     return alertas
 
