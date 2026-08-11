@@ -150,7 +150,9 @@ def verificar_google():
                 if resp.ok:
                     for row in resp.json().get("results", []):
                         status = row.get("billingSetup", {}).get("status", "")
-                        if status not in ("APPROVED", "APPROVED_HELD"):
+                        # PENDING = fatura em processamento (normal), ignora
+                        # Só alerta em status realmente problemáticos
+                        if status in ("CANCELLED", "PENDING_USER_INPUT"):
                             alertas.append((
                                 cliente, "Google Ads",
                                 f"problema de cobrança ({status.lower().replace('_', ' ')})",
