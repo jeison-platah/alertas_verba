@@ -18,8 +18,7 @@ ZAPI_TOKEN        = os.environ["ZAPI_TOKEN"]
 ZAPI_CLIENT_TOKEN = os.environ["ZAPI_CLIENT_TOKEN"]
 
 ALERT_RECIPIENTS = [
-    os.environ.get("WHATSAPP_PERSONAL", "5547991655505"),  # Jeison
-    "5547997497459",                                        # Maicon
+    os.environ.get("WHATSAPP_GROUP", "554792362534-1618425738"),  # [ ∆ Platah ] - TEAM
 ]
 
 # ─── Contas por cliente ───────────────────────────────────────────────────────
