@@ -230,7 +230,7 @@ def verificar_tiktok(yesterday):
 # ─── Monta mensagem por problema ──────────────────────────────────────────────
 
 def montar_mensagem(cliente, plataforma, descricao, account_id, data_fmt):
-    emoji = {"Meta Ads": "⚠️", "Google Ads": "⚠️", "TikTok Ads": "⚠️"}.get(plataforma, "⚠️")
+    emoji = {"Meta Ads": "📣", "Google Ads": "🔍", "TikTok Ads": "🎵"}.get(plataforma, "⚠️")
     return (
         f"{emoji} *Alerta de conta — {cliente}*\n"
         f"\n"
@@ -275,4 +275,11 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    try:
+        run()
+    except Exception as e:
+        print(f"ERRO CRÍTICO: {e}")
+        import traceback
+        traceback.print_exc()
+    import sys
+    sys.exit(0)
