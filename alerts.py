@@ -42,6 +42,7 @@ GOOGLE_ACCOUNTS = {
     "Undertop":     ["2341810352"],
     "787 Shirts":   ["2276201464"],
     "Monnari":      ["4241884415"],
+    "Serinah":      ["9882984023"],
 }
 
 TIKTOK_ACCOUNTS = {
@@ -163,29 +164,39 @@ def verificar_google():
             # 2. Gasto zero ontem = possível verba esgotada
             try:
                 yesterday = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+                # Busca gasto de TODAS as campanhas (qualquer status) ontem
                 resp = requests.post(
                     f"https://googleads.googleapis.com/v23/customers/{cid}/googleAds:search",
                     headers=headers,
                     json={"query": (
                         f"SELECT metrics.cost_micros FROM campaign "
-                        f"WHERE segments.date = '{yesterday}' "
-                        f"AND campaign.status = 'ENABLED'"
+                        f"WHERE segments.date = '{yesterday}'"
                     )},
                     timeout=30,
                 )
                 if resp.ok:
                     results = resp.json().get("results", [])
-                    if results:  # tem campanhas ativas
-                        total = sum(
-                            float(r.get("metrics", {}).get("costMicros", 0))
-                            for r in results
-                        )
-                        if total == 0:
-                            alertas.append((
-                                cliente, "Google Ads",
-                                "sem gasto ontem — possível verba esgotada",
-                                cid
-                            ))
+                    total = sum(
+                        float(r.get("metrics", {}).get("costMicros", 0))
+                        for r in results
+                    )
+                    # Verifica se há ao menos uma campanha ativa
+                    resp_ativas = requests.post(
+                        f"https://googleads.googleapis.com/v23/customers/{cid}/googleAds:search",
+                        headers=headers,
+                        json={"query": (
+                            "SELECT campaign.id FROM campaign "
+                            "WHERE campaign.status = 'ENABLED'"
+                        )},
+                        timeout=30,
+                    )
+                    tem_ativas = bool(resp_ativas.ok and resp_ativas.json().get("results", []))
+                    if tem_ativas and total == 0:
+                        alertas.append((
+                            cliente, "Google Ads",
+                            "sem gasto ontem — possível verba esgotada",
+                            cid
+                        ))
             except Exception as e:
                 print(f"  Google gasto erro {cid}: {e}")
 
