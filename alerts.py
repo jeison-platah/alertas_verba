@@ -256,10 +256,6 @@ def montar_mensagem(cliente, plataforma, descricao, account_id, data_fmt):
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def run():
-    if date.today().weekday() in (5, 6):
-        print("Fim de semana -- sem alertas.")
-        return
-
     yesterday_fmt = (date.today() - timedelta(days=1)).strftime("%d/%m/%Y")
     today_fmt     = date.today().strftime("%d/%m/%Y")
     yesterday     = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
