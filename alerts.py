@@ -32,6 +32,7 @@ META_ACCOUNTS = {
     "787 Shirts":   ["345077603197566"],
     "Monnari":      ["267750700965455"],
     "Serinah":      ["1697338310459624"],
+    "Di`Vitória":   ["1673877057045604"],
 }
 
 GOOGLE_ACCOUNTS = {
@@ -43,6 +44,7 @@ GOOGLE_ACCOUNTS = {
     "787 Shirts":   ["2276201464"],
     "Monnari":      ["4241884415"],
     "Serinah":      ["9882984023"],
+    "Di`Vitória":   ["3895975688"],
 }
 
 TIKTOK_ACCOUNTS = {
