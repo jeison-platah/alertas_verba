@@ -60,6 +60,9 @@ META_STATUS = {
     9: "verba esgotada ou cartão recusado",
 }
 
+# Fontes que não responderam nesta rodada: sem elas o "tudo OK" seria falso
+FALHAS = []
+
 # ─── WhatsApp ─────────────────────────────────────────────────────────────────
 
 def send_whatsapp(text):
@@ -88,6 +91,9 @@ def verificar_meta():
     rows = token_resp.json() if token_resp.ok else []
     if isinstance(rows, dict):
         rows = rows.get("data", [])
+    if not token_resp.ok or not rows:
+        FALHAS.append(f"Meta Ads (Windsor respondeu {token_resp.status_code})")
+        return []
 
     # Mapeia account_id -> status
     status_map = {str(r.get("account_id", "")): r.get("account_status") for r in rows}
@@ -128,6 +134,7 @@ def verificar_google():
         }, timeout=10).json()["access_token"]
     except Exception as e:
         print(f"  Google token erro: {e}")
+        FALHAS.append("Google Ads (acesso recusado)")
         return []
 
     alertas = []
@@ -227,6 +234,10 @@ def verificar_tiktok(yesterday):
             rows = rows.get("data", [])
     except Exception as e:
         print(f"  TikTok erro: {e}")
+        FALHAS.append("TikTok Ads")
+        return []
+    if not resp.ok:
+        FALHAS.append(f"TikTok Ads (Windsor respondeu {resp.status_code})")
         return []
 
     alertas = []
@@ -268,8 +279,15 @@ def run():
     alertas += verificar_google()
     alertas += verificar_tiktok(yesterday)
 
+    if FALHAS:
+        # não dá para dizer "tudo OK" sem ter conseguido olhar: avisa a equipe uma vez
+        msg = ("⚠️ *Alertas de conta — não consegui verificar*\n\n"
+               + "\n".join(f"• {f}" for f in FALHAS)
+               + f"\n\n_{today_fmt}. As contas dessas plataformas ficaram sem checagem hoje._")
+        print(msg)
+        send_whatsapp(msg)
     if not alertas:
-        print("Nenhum problema encontrado -- tudo OK!")
+        print("Nenhum problema encontrado" + (" nas plataformas que responderam." if FALHAS else " -- tudo OK!"))
         return
 
     print(f"{len(alertas)} problema(s) encontrado(s)")
