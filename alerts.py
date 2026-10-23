@@ -63,6 +63,14 @@ META_STATUS = {
 # Fontes que não responderam nesta rodada: sem elas o "tudo OK" seria falso
 FALHAS = []
 
+# Google Ads pré-pago: avisa quando o saldo restante cobre menos que estes dias no ritmo
+# médio dos últimos 7 dias
+DIAS_SALDO_BAIXO = 7
+
+
+def brl(v):
+    return "R$ {:,.2f}".format(v).replace(",", "X").replace(".", ",").replace("X", ".")
+
 # ─── WhatsApp ─────────────────────────────────────────────────────────────────
 
 def send_whatsapp(text):
@@ -208,6 +216,54 @@ def verificar_google():
                         ))
             except Exception as e:
                 print(f"  Google gasto erro {cid}: {e}")
+
+            # 3. Saldo baixo (pagamento manual/pré-pago): limite do orçamento da conta menos o
+            # que já foi veiculado, comparado ao gasto médio dos últimos 7 dias
+            try:
+                resp = requests.post(
+                    f"https://googleads.googleapis.com/v23/customers/{cid}/googleAds:search",
+                    headers=headers,
+                    json={"query": (
+                        "SELECT account_budget.status, account_budget.approved_end_date_time, "
+                        "account_budget.approved_spending_limit_type, "
+                        "account_budget.approved_spending_limit_micros, "
+                        "account_budget.adjusted_spending_limit_micros, "
+                        "account_budget.amount_served_micros FROM account_budget"
+                    )},
+                    timeout=30,
+                )
+                agora = date.today().strftime("%Y-%m-%d")
+                saldo = None
+                for row in (resp.json().get("results", []) if resp.ok else []):
+                    b = row.get("accountBudget", {})
+                    fim = b.get("approvedEndDateTime")
+                    if b.get("status") != "APPROVED" or (fim and fim[:10] < agora):
+                        continue          # orçamento antigo ou ainda não aprovado
+                    if b.get("approvedSpendingLimitType") == "INFINITE":
+                        continue          # sem limite = conta no cartão, não tem saldo
+                    limite = float(b.get("adjustedSpendingLimitMicros") or b.get("approvedSpendingLimitMicros") or 0)
+                    saldo = (limite - float(b.get("amountServedMicros") or 0)) / 1_000_000
+                if saldo is not None:
+                    resp = requests.post(
+                        f"https://googleads.googleapis.com/v23/customers/{cid}/googleAds:search",
+                        headers=headers,
+                        json={"query": "SELECT metrics.cost_micros FROM customer WHERE segments.date DURING LAST_7_DAYS"},
+                        timeout=30,
+                    )
+                    gasto_7d = sum(float(r.get("metrics", {}).get("costMicros", 0))
+                                   for r in (resp.json().get("results", []) if resp.ok else [])) / 1_000_000
+                    media = gasto_7d / 7
+                    print(f"  Google saldo {cliente}: {saldo:.2f} | média/dia {media:.2f}")
+                    if media > 0 and saldo < media * DIAS_SALDO_BAIXO:
+                        dias = max(saldo, 0) / media
+                        alertas.append((
+                            cliente, "Google Ads",
+                            f"saldo baixo — restam {brl(max(saldo, 0))}, dá para ~{dias:.0f} dia(s) "
+                            f"no ritmo atual ({brl(media)}/dia)",
+                            cid
+                        ))
+            except Exception as e:
+                print(f"  Google saldo erro {cid}: {e}")
 
     return alertas
 
