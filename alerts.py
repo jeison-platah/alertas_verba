@@ -258,7 +258,7 @@ def verificar_google():
                         dias = max(saldo, 0) / media
                         alertas.append((
                             cliente, "Google Ads",
-                            f"saldo baixo — restam {brl(max(saldo, 0))}, dá para ~{dias:.0f} dia(s) "
+                            f"saldo/limite da conta acabando — restam {brl(max(saldo, 0))}, dá para ~{dias:.0f} dia(s) "
                             f"no ritmo atual ({brl(media)}/dia)",
                             cid
                         ))
