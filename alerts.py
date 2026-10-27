@@ -65,6 +65,10 @@ FALHAS = []
 
 # Google Ads pré-pago/com limite: avisa quando o saldo restante fica abaixo deste valor
 SALDO_MINIMO = 500.0
+# Marcas da Texpa: mínimo maior
+SALDO_MINIMO_CLIENTE = {"Oimu": 1000.0, "Kukiê": 1000.0, "Infanti": 1000.0, "Vic & Johnny": 1000.0}
+# Quem recarrega aos poucos: avisa quando o saldo cobre menos que estes dias no ritmo atual
+DIAS_MINIMOS_CLIENTE = {"Di`Vitória": 2}   # recarrega R$ 150 por vez
 # Clientes que recarregam todo dia: não avisa saldo baixo, só o "sem gasto ontem"
 SEM_AVISO_SALDO = {"787 Shirts"}
 
@@ -255,7 +259,11 @@ def verificar_google():
                                    for r in (resp.json().get("results", []) if resp.ok else [])) / 1_000_000
                     media = gasto_7d / 7
                     print(f"  Google saldo {cliente}: {saldo:.2f} | média/dia {media:.2f}")
-                    if media > 0 and saldo < SALDO_MINIMO:
+                    if cliente in DIAS_MINIMOS_CLIENTE:
+                        baixo = saldo < media * DIAS_MINIMOS_CLIENTE[cliente]
+                    else:
+                        baixo = saldo < SALDO_MINIMO_CLIENTE.get(cliente, SALDO_MINIMO)
+                    if media > 0 and baixo:
                         dias = max(saldo, 0) / media
                         alertas.append((
                             cliente, "Google Ads",
