@@ -63,9 +63,10 @@ META_STATUS = {
 # Fontes que não responderam nesta rodada: sem elas o "tudo OK" seria falso
 FALHAS = []
 
-# Google Ads pré-pago: avisa quando o saldo restante cobre menos que estes dias no ritmo
-# médio dos últimos 7 dias
-DIAS_SALDO_BAIXO = 7
+# Google Ads pré-pago/com limite: avisa quando o saldo restante fica abaixo deste valor
+SALDO_MINIMO = 500.0
+# Clientes que recarregam todo dia: não avisa saldo baixo, só o "sem gasto ontem"
+SEM_AVISO_SALDO = {"787 Shirts"}
 
 
 def brl(v):
@@ -243,7 +244,7 @@ def verificar_google():
                         continue          # sem limite = conta no cartão, não tem saldo
                     limite = float(b.get("adjustedSpendingLimitMicros") or b.get("approvedSpendingLimitMicros") or 0)
                     saldo = (limite - float(b.get("amountServedMicros") or 0)) / 1_000_000
-                if saldo is not None:
+                if saldo is not None and cliente not in SEM_AVISO_SALDO:
                     resp = requests.post(
                         f"https://googleads.googleapis.com/v23/customers/{cid}/googleAds:search",
                         headers=headers,
@@ -254,7 +255,7 @@ def verificar_google():
                                    for r in (resp.json().get("results", []) if resp.ok else [])) / 1_000_000
                     media = gasto_7d / 7
                     print(f"  Google saldo {cliente}: {saldo:.2f} | média/dia {media:.2f}")
-                    if media > 0 and saldo < media * DIAS_SALDO_BAIXO:
+                    if media > 0 and saldo < SALDO_MINIMO:
                         dias = max(saldo, 0) / media
                         alertas.append((
                             cliente, "Google Ads",
