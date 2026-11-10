@@ -68,9 +68,9 @@ SALDO_MINIMO = 500.0
 # Marcas da Texpa: mínimo maior
 SALDO_MINIMO_CLIENTE = {"Oimu": 1000.0, "Kukiê": 1000.0, "Infanti": 1000.0, "Vic & Johnny": 1000.0}
 # Quem recarrega aos poucos: avisa quando o saldo cobre menos que estes dias no ritmo atual
-DIAS_MINIMOS_CLIENTE = {"Di`Vitória": 2}   # recarrega R$ 150 por vez
-# Clientes que recarregam todo dia: não avisa saldo baixo, só o "sem gasto ontem"
-SEM_AVISO_SALDO = {"787 Shirts"}
+DIAS_MINIMOS_CLIENTE = {}   # cliente: dias de gasto médio que o saldo precisa cobrir
+# Não avisa saldo baixo, só o "sem gasto ontem" (787 recarrega todo dia; Di`Vitória recarrega no cartão)
+SEM_AVISO_SALDO = {"787 Shirts", "Di`Vitória"}
 
 
 def brl(v):
