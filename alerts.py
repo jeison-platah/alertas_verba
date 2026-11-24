@@ -125,6 +125,70 @@ def verificar_meta():
             if descricao:
                 alertas.append((cliente, "Meta Ads", descricao, account_id))
 
+    alertas += verificar_meta_gasto()
+    return alertas
+
+
+def windsor_meta(fields, de, ate):
+    """Linhas do Windsor só das contas cadastradas (o Windsor devolve todas as contas do token)."""
+    nossas = {a for contas in META_ACCOUNTS.values() for a in contas}
+    resp = requests.get(
+        "https://connectors.windsor.ai/facebook",
+        params={"api_key": WINDSOR_API_KEY, "fields": fields, "accounts": ",".join(nossas),
+                "date_from": str(de), "date_to": str(ate)},
+        timeout=180,
+    )
+    rows = resp.json() if resp.ok else None
+    if isinstance(rows, dict):
+        rows = rows.get("data")
+    if not resp.ok or rows is None:
+        raise RuntimeError(f"Windsor respondeu {resp.status_code}")
+    return [r for r in rows if str(r.get("account_id", "")) in nossas]
+
+
+def verificar_meta_gasto():
+    """Sem gasto ontem (conta que gastou nos últimos 30 dias) e limite de gasto da conta acabando."""
+    alertas = []
+    ontem = date.today() - timedelta(days=1)
+
+    # 1. Sem gasto ontem
+    try:
+        gasto = {}
+        for r in windsor_meta("account_id,date,spend", ontem - timedelta(days=29), ontem):
+            dias = gasto.setdefault(str(r["account_id"]), {})
+            d = str(r.get("date", ""))[:10]
+            dias[d] = dias.get(d, 0.0) + float(r.get("spend") or 0)
+        for cliente, contas in META_ACCOUNTS.items():
+            for account_id in contas:
+                dias = gasto.get(account_id, {})
+                if sum(dias.values()) > 0 and dias.get(str(ontem), 0) == 0:
+                    alertas.append((cliente, "Meta Ads", "sem gasto ontem — possível verba esgotada", account_id))
+    except Exception as e:
+        print(f"  Meta gasto erro: {e}")
+        FALHAS.append("Meta Ads (gasto de ontem)")
+
+    # 2. Limite de gasto da conta (spend_cap): o Meta para de veicular quando o gasto chega nele.
+    # Valores em centavos; spend_cap 0 = sem limite. amount_spent conta desde o último reset do limite.
+    try:
+        hoje = date.today()
+        for r in windsor_meta("account_id,spend_cap,amount_spent", hoje, hoje):
+            cap = float(r.get("spend_cap") or 0) / 100
+            if cap <= 0:
+                continue
+            account_id = str(r["account_id"])
+            cliente = next(c for c, contas in META_ACCOUNTS.items() if account_id in contas)
+            resta = cap - float(r.get("amount_spent") or 0) / 100
+            print(f"  Meta limite {cliente}: limite {cap:.2f} | resta {resta:.2f}")
+            if resta < SALDO_MINIMO_CLIENTE.get(cliente, SALDO_MINIMO):
+                alertas.append((
+                    cliente, "Meta Ads",
+                    f"limite de gasto da conta acabando — restam {brl(max(resta, 0))} de {brl(cap)}",
+                    account_id,
+                ))
+    except Exception as e:
+        print(f"  Meta limite erro: {e}")
+        FALHAS.append("Meta Ads (limite de gasto)")
+
     return alertas
 
 
