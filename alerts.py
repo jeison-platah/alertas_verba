@@ -33,6 +33,7 @@ META_ACCOUNTS = {
     "Monnari":      ["267750700965455"],
     "Serinah":      ["1697338310459624"],
     "Di`Vitória":   ["1673877057045604"],
+    "Talinda":      ["4567188349978964"],
 }
 
 GOOGLE_ACCOUNTS = {
